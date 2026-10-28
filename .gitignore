@@ -1,0 +1,10 @@
+.venv/
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+data/*.db
+data/*.db-journal
+output/logs/
+output/email-previews/

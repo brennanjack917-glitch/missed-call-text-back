@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{% endblock %} · {{ business.name }}</title>
+{{ theme.HEAD_SCRIPT | safe }}
+<style>{{ theme.CSS | safe }}</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">✆</span>
+    <span><strong>Missed-Call Text-Back</strong> <span class="muted">· {{ business.name }} (fictional demo)</span></span>
+  </div>
+  <nav>
+    <a href="{{ url_for('demo') }}" class="{{ 'active' if request.endpoint == 'demo' }}">Demo</a>
+    <a href="{{ url_for('owner') }}" class="{{ 'active' if request.endpoint in ('owner', 'conversation') }}">Owner view</a>
+    {{ theme.BUTTON | safe }}
+  </nav>
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+{{ theme.TOGGLE_SCRIPT | safe }}
+{% block scripts %}{% endblock %}
+</body>
+</html>

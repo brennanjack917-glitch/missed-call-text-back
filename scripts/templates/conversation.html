@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Conversation{% endblock %}
+{% block content %}
+<div class="owner">
+  <p><a href="{{ url_for('owner') }}">← All leads</a></p>
+  <div class="owner-head">
+    <h1>{{ lead.name or "Name not given" }}</h1>
+    {% if tel %}<a class="button primary" href="{{ tel }}">📞 Call {{ lead.callback_number or lead.caller_number }}</a>{% endif %}
+  </div>
+  <div class="conversation-layout">
+    <section class="card">
+      <h2>Texts</h2>
+      <div class="chat chat-static">
+        {% for m in messages %}
+        <div class="bubble-row {{ 'from-customer' if m.direction == 'in' else 'from-business' }}">
+          <div class="bubble {{ 'bubble-fixed' if m.source == 'fixed' }}">{{ m.body }}</div>
+          <div class="bubble-meta">{{ sources[m.source] }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    <aside>
+      <section class="card">
+        <h2>Lead</h2>
+        <dl class="fields">
+          {% for key, label in card_fields %}<div><dt>{{ label }}</dt><dd>{{ lead[key] or "—" }}</dd></div>{% endfor %}
+          <div><dt>Called from</dt><dd>{{ lead.caller_number }}</dd></div>
+        </dl>
+      </section>
+      <section class="card">
+        <h2>Behind the scenes</h2>
+        <ol class="events">{% for line in events %}<li>{{ line }}</li>{% endfor %}</ol>
+      </section>
+    </aside>
+  </div>
+</div>
+{% endblock %}

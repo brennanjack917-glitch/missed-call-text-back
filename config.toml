@@ -1,0 +1,109 @@
+# Business settings for the demo. Everything the assistant knows about the business lives here,
+# so switching trades (plumbing -> HVAC -> electrical) means editing this file, not the code.
+# DRAFT from Phase 2 design. Review the fixed safety messages with a real tradesperson before any real use.
+
+[business]
+name = "Harbor Plumbing & Heating"
+trade = "plumbing and heating"
+phone = "(617) 555-0142"                  # fictional number (555-0100 to 555-0199 are reserved for fiction)
+timezone = "America/New_York"
+tone = "friendly and casual"              # shapes the system prompt; keep replies short and warm
+
+# Hours the office is staffed. Outside these hours the assistant still collects the lead.
+# Days: mon tue wed thu fri sat sun. Times are 24-hour, local to the business.
+[business.hours]
+mon = ["07:00", "17:00"]
+tue = ["07:00", "17:00"]
+wed = ["07:00", "17:00"]
+thu = ["07:00", "17:00"]
+fri = ["07:00", "17:00"]
+sat = ["08:00", "12:00"]
+# sun omitted = closed
+
+[services]
+offered = [
+  "drain cleaning and clogs",
+  "leak detection and repair",
+  "water heater repair and replacement",
+  "boiler and furnace repair",
+  "faucet, toilet and fixture installation",
+  "sewer line inspection and repair",
+]
+not_offered = [
+  "new-construction plumbing",
+  "commercial or industrial work",
+  "septic system pumping",
+]
+
+# The assistant judges whether the customer's town is within the radius; the code does not verify addresses.
+# Near the edge it answers "unclear" and a human confirms. The example towns anchor its judgment
+# (approximate straight-line distances from downtown Boston).
+[service_area]
+center = "Boston, MA"
+radius_miles = 50
+examples_inside = [
+  "Boston", "Cambridge", "Somerville", "Quincy", "Melrose", "Newton", "Waltham", "Salem",   # under 20 miles
+  "Framingham", "Brockton", "Lowell", "Lawrence", "Gloucester",                            # 20-35 miles
+  "Worcester", "Plymouth", "Nashua NH", "Providence RI",                                   # 35-45 miles
+]
+examples_outside = ["Springfield", "Hyannis", "Concord NH", "Hartford CT", "Portland ME"]
+
+[assistant]
+model = "claude-haiku-5-5"                # swap to claude-sonnet-5-5 for smarter replies at ~20x the cost
+effort = "low"                            # thinking depth; low keeps short texts cheap and fast
+max_tokens = 1500                         # generous: thinking counts toward this limit
+max_customer_messages = 12                # hard cap per conversation (cost and safety)
+max_customer_chars = 1000                 # longer customer texts are cut before they reach the AI
+daily_budget_usd = 0.50                   # once AI spend for the day (business time zone) reaches this, the AI is skipped
+max_reply_chars = 320                     # about two text-message segments
+dedupe_hours = 24                         # at most one text-back per caller per 24 hours
+include_opt_out_notice = false            # must be true for real texting ("Reply STOP to opt out")
+
+# Prices in US dollars per million tokens, for the cost estimate saved with each reply.
+# From Anthropic's pricing page, accessed 2026-10-26 (Haiku 5.5, prompts up to 100K tokens). Update if you change the model.
+[assistant.prices]
+input = 0.10
+output = 0.50
+cache_write = 0.125
+cache_read = 0.01
+
+# Never start outreach of our own outside these local hours (replying to a caller who just called is fine).
+[assistant.outreach_window]
+start = "09:00"
+end = "20:00"
+
+# Fixed, pre-written messages. The AI never writes safety advice; these are sent by code.
+# {business_name} and {phone} are filled in automatically.
+[messages]
+greeting = "Hi, sorry we missed your call! This is {business_name}'s automated assistant. What's going on, and is anyone in danger?"
+complete = "Thanks! I've sent this to our team and someone will be in touch to confirm a time. If anything gets worse or becomes dangerous, call 911."
+handoff = "Thanks! I've passed this to our team and someone will follow up with you directly."
+# Hand-off messages for specific reasons; any reason without its own message uses "handoff" above.
+# {town} is the customer's town, or "That area" if we don't know it.
+handoff_out_of_area = "Thanks! {town} may be outside our usual service area, so someone from our team will let you know if we can help."
+handoff_out_of_scope = "Thanks! That may not be a job we usually take on, so someone from our team will let you know if we can help."
+opt_out_confirm = "You're unsubscribed and won't get more texts from {business_name}. To reach us, call {phone}."
+cap_reached = "Thanks for all the detail! I've passed this to our team and someone will follow up with you directly."
+followup_ack = "Thanks, I've added that for our team."
+
+# Life-safety messages, sent by code before the AI's reply. The AI's reply then asks for the address.
+# Sourced from PG&E, CPSC, Ready.gov and NFPA (see output/research.md, topic 5 and the gap-closing round).
+[messages.safety]
+gas = "Safety first: get out of the building now. Don't use light switches or your phone until you're well away. From outside, call 911, then your gas utility."
+carbon_monoxide = "Safety first: get outside to fresh air right away, then call 911."
+fire = "Safety first: if there is smoke or fire, get everyone out and call 911 from outside. Don't go back in until the fire department says it's safe."
+# NEEDS REVIEW by a tradesperson: the shut-off advice is "likely" level in the research (fire-department pages via search summary).
+water = "If it's safe, shut off your main water valve. If water is near outlets, an electrical panel, a water heater or a furnace, stay clear and call 911. I'm flagging this as an emergency for our team."
+electrical = "Stay away from the sparking or burning-smell area and don't touch it. If you see smoke or flames, get out and call 911. I'm flagging this as an emergency for our team."
+other = "If anyone is in danger, get to safety and call 911. I'm flagging this as an emergency for our team."
+
+# Emergency keyword patterns, checked in code on every customer message (the AI cannot override this).
+# Case-insensitive; matched as whole words/phrases. The first category that matches picks the message.
+[emergency_keywords]
+gas = ["smell gas", "smells like gas", "smell like gas", "smells of gas", "smelling gas", "smel gas", "smell gass",
+       "gas leak", "gas smell", "gas odor", "gas odour", "rotten egg", "rotten eggs", "smell of gas", "hissing"]
+carbon_monoxide = ["carbon monoxide", "monoxide", "co alarm", "co detector", "co2 alarm"]
+fire = ["on fire", "fire", "smoke", "smoking", "flames"]
+water = ["flooding", "flooded", "burst pipe", "pipe burst", "pipe broke", "water everywhere", "sewage", "sewer backup",
+         "gushing", "water pouring", "pouring water", "pouring through", "pouring in", "spraying water", "water spraying"]
+electrical = ["sparking", "sparks", "burning smell", "shocked", "electrocuted", "panel is hot"]
