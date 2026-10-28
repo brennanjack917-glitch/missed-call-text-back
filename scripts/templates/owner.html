@@ -44,6 +44,8 @@
       <span class="badge badge-{{ lead.urgency }}">{{ "🚨 Emergency" if lead.urgency == "emergency" else lead.urgency | capitalize }}</span>
       {% if lead.handoff_reason %}<span class="badge badge-handoff">Needs a person: {{ lead.handoff_text }}</span>{% endif %}
       {% if lead.in_service_area == "no" %}<span class="badge badge-unknown">Maybe out of area</span>{% endif %}
+      {% if lead.crm_sync_status == "synced" %}<span class="badge badge-routine">Sent to CRM</span>
+      {% elif lead.crm_sync_status == "failed" %}<span class="badge badge-urgent">CRM send failed</span>{% endif %}
       <span class="muted small lead-time">{{ lead.created_at | local }}</span>
     </div>
     <h2>{{ lead.name or "Name not given" }} <span class="muted">· {% if lead.address %}{{ lead.address }}{% if lead.town and lead.town | lower not in lead.address | lower %}, {{ lead.town }}{% endif %}{% else %}{{ lead.town or "address not given" }}{% endif %}</span></h2>

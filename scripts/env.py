@@ -7,7 +7,8 @@ import os
 from pathlib import Path
 
 ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
-KEYS = ("ANTHROPIC_API_KEY", "GMAIL_ADDRESS", "GMAIL_APP_PASSWORD", "ALERT_TO")
+KEYS = ("ANTHROPIC_API_KEY", "GMAIL_ADDRESS", "GMAIL_APP_PASSWORD", "ALERT_TO", "LEAD_WEBHOOK_URL",
+        "LEAD_WEBHOOK_SECRET")
 
 
 def load_env(path: Path = ENV_PATH) -> dict[str, str]:

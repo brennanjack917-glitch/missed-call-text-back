@@ -94,7 +94,7 @@ The demo sends no real texts, so these don't apply to it. Whether a business may
 | 4 | Demo web page (simulate call, phone chat, owner view with status, notes, search, tap-to-call, CSV export) | Done; checked in the browser in light and dark mode |
 | 5 | Hardening (red-team tests, cost guard, failure handling) | Done: 101 offline tests, 23 of 23 on the [red-team scorecard](output/red-team-report.md) |
 | 6 | Polish (screenshots, light/dark theme, CI) | Done: screenshots, demo video, README, tests run on GitHub on every push |
-| 7 | Optional: real texting with Twilio, lead webhook and CRM integrations, calendar booking, multiple businesses | Not started |
+| 7 | Optional: real texting with Twilio, lead webhook and CRM integrations, calendar booking, multiple businesses | In progress: lead webhook done (117 offline tests); next, calendar booking |
 
 ## Setup
 
@@ -123,6 +123,19 @@ Then open **http://127.0.0.1:5050** in your browser. It only runs on your own co
 
 Each customer message is one Claude call, about $0.0002.
 
+### Send leads to a CRM (webhook)
+
+Each lead can also be sent as JSON to a web address you choose, so Zapier, Make or a CRM can pick it up. It's sent when an emergency is spotted, when the lead is complete, and when a person needs to take over. Set `LEAD_WEBHOOK_URL` in `.env` (it must start with `https://`) and restart the demo. Leave it blank to turn it off.
+
+- **Try it for free:** run the test receiver in a second terminal, set `LEAD_WEBHOOK_URL=http://127.0.0.1:5051/`, restart the demo, and open **http://127.0.0.1:5051** to watch leads arrive.
+
+  ```powershell
+  .\.venv\Scripts\python.exe -m scripts.webhook_receiver
+  ```
+
+- **Signature:** set `LEAD_WEBHOOK_SECRET` to any long random text and every lead carries an `X-Signature-256` header (HMAC-SHA256 of the body, `sha256=<hex>`), so the receiver can check it really came from this app. The test receiver checks it when the same secret is in `.env`.
+- **Results:** the owner view marks each lead *Sent to CRM* or *CRM send failed*. A failed send never stops the conversation or loses the lead, and Export CSV still works as a backup. There are no automatic retries yet.
+
 ### Run the red-team scorecard
 
 ```powershell
@@ -150,6 +163,7 @@ At the end it prints the saved lead, the token usage and the estimated cost.
 | [scripts/guard.py](scripts/guard.py) | Opt-outs, emergency keywords, reply checks, lead merging |
 | [scripts/store.py](scripts/store.py) | SQLite tables and queries |
 | [scripts/notify.py](scripts/notify.py) | Owner email (always saved as a preview; sent through Gmail when switched on) |
+| [scripts/webhook.py](scripts/webhook.py) | Sends each lead as JSON to a CRM webhook (optional), with [a free test receiver](scripts/webhook_receiver.py) |
 | [scripts/web.py](scripts/web.py) | The demo page and owner view (Flask), with [templates](scripts/templates/) and [styles and scripts](scripts/static/) |
 | [scripts/provider.py](scripts/provider.py) | The simulated phone company; a real texting provider (Twilio) would plug in here |
 | [scripts/theme.py](scripts/theme.py) | Light/dark theme colors and the toggle |
@@ -173,6 +187,9 @@ At the end it prints the saved lead, the token usage and the estimated cost.
 
 ## Project log
 
+- **2026-10-28:** Phase 7 started with a lead webhook. Each lead can now be sent as JSON to Zapier, Make or a CRM (`LEAD_WEBHOOK_URL`), with an optional signature, https-only addresses, no redirects, a 10-second timeout and a *Sent to CRM* / *CRM send failed* label on the owner view. A free test receiver (`scripts/webhook_receiver.py`, port 5051) shows leads as they arrive. 117 offline tests pass, a scripted conversation reached the real receiver, and a real-AI demo conversation arrived on the test receiver. The demo page shows whether the webhook is on. Not yet tried with a real Zapier account.
+- **2026-10-28:** Added a [launch checklist](resources/launch-checklist.md): everything between this demo and a paying customer (call-forwarding test, Twilio, hosting, owner-page login, carrier registration, legal review, pilot).
+- **2026-10-28:** Went public. Following the [going-public checklist](resources/going-public.md), the project was copied to a fresh folder without its Git history and published as a new public repo, so the old commits (and the personal notes in them) stay in the private original. Commits now use a private GitHub `noreply` email. The new repo took the `missed-call-text-back` name, so the Tests badge links still work. Demo video re-uploaded.
 - **2026-10-27:** Demo video added to the README: a 30-second screen recording of an emergency conversation, recorded with Snipping Tool and shrunk with ffmpeg.
 - **2026-10-27:** Phase 6 polish: README rewritten for portfolio readers with screenshots (taken by `scripts/screenshots.py`, which replays real conversations for free) and a how-it-works diagram; the offline tests now run on GitHub after every push, on Python 3.13 and 3.15.
 - **2026-10-27:** Phase 5 hardening done. New: a red-team scorecard (23 scripted customers against the real AI, checked automatically), a daily spending cap, a check that blocks replies repeating the AI's instructions, more emergency wordings and typos ("smel gas", "rotten eggs", "gushing"), duplicate-text protection for real texting later, long-message trimming, an error log, and a "Clear demo data" button. The AI was taught with examples that most leaks are urgent, not emergencies. First scorecard run: 22 of 23 (the AI kept collecting details after a customer asked for a person); the hand-off is now enforced in code. Final run: 23 of 23 for under a cent. 101 offline tests pass.

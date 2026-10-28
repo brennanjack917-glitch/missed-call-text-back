@@ -6,6 +6,7 @@ from scripts.config import load_config, message, safety_message
 from scripts.notify import EmailNotifier
 from scripts.store import Store
 from scripts.web import create_app, csv_safe, tel_link
+from scripts.webhook import WebhookNotifier
 from tests.fakes import OPEN_TIME, FakeLLM, answer
 
 
@@ -43,6 +44,21 @@ class DemoTests(WebTestCase):
         page = self.client().get("/").get_data(as_text=True)
         self.assertIn("Harbor Plumbing &amp; Heating", page)
         self.assertIn("Simulate missed call", page)
+
+    def test_demo_page_says_whether_the_webhook_is_on(self):
+        self.assertIn("CRM webhook: off.", self.client().get("/").get_data(as_text=True))
+        for url, link in (("http://127.0.0.1:5051/", True), ("https://hooks.zapier.com/hooks/catch/1/secret/", False)):
+            webhook = WebhookNotifier(self.cfg, {"LEAD_WEBHOOK_URL": url}, self.store)
+            app = create_app(self.cfg, self.store, self.llm, self.email, clock=lambda: OPEN_TIME,
+                             preview_dir=self.preview_dir, webhook=webhook)
+            page = app.test_client().get("/").get_data(as_text=True)
+            self.assertIn("CRM webhook: on.", page)
+            self.assertEqual("Watch leads arrive" in page, link)
+            self.assertNotIn("secret", page)  # a real address is never shown
+        bad = WebhookNotifier(self.cfg, {"LEAD_WEBHOOK_URL": "http://example.com/hook"}, self.store)
+        app = create_app(self.cfg, self.store, self.llm, self.email, clock=lambda: OPEN_TIME,
+                         preview_dir=self.preview_dir, webhook=bad)
+        self.assertIn("must start with https://", app.test_client().get("/").get_data(as_text=True))
 
     def test_missed_call_gives_a_fictional_number_and_the_greeting(self):
         state = self.call(self.client())
@@ -139,6 +155,14 @@ class OwnerTests(WebTestCase):
         self.assertNotIn("burst pipe", filtered)
         self.assertIn("burst pipe", client.get("/owner?q=BURST").get_data(as_text=True))
         self.assertIn("No leads match", client.get("/owner?q=nothing-like-this").get_data(as_text=True))
+
+    def test_crm_badges_show_only_after_a_webhook_send(self):
+        self.make_lead("(617) 555-0101", problem="burst pipe", crm_sync_status="synced")
+        self.make_lead("(617) 555-0102", problem="slow drain", crm_sync_status="failed")
+        self.make_lead("(617) 555-0103", problem="dripping tap")
+        page = self.client().get("/owner").get_data(as_text=True)
+        self.assertEqual(page.count("Sent to CRM"), 1)
+        self.assertEqual(page.count("CRM send failed"), 1)
 
     def test_status_and_notes_save(self):
         conv_id = self.make_lead("(617) 555-0101")

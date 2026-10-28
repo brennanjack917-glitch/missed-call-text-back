@@ -11,6 +11,7 @@ import logging
 import os
 import re
 from datetime import datetime
+from urllib.parse import urlsplit
 
 from flask import Flask, Response, abort, jsonify, render_template, request, url_for
 from werkzeug.exceptions import HTTPException
@@ -21,6 +22,7 @@ from scripts.engine import Engine
 from scripts.notify import PREVIEW_DIR, EmailNotifier, latest_preview
 from scripts.provider import SimulatedProvider, is_fictional
 from scripts.store import LEAD_STATUSES, Store
+from scripts.webhook import LOCAL_HOSTS, WebhookNotifier
 
 HOST, PORT = "127.0.0.1", 5050
 MAX_TEXT = 1000  # characters per customer message
@@ -60,6 +62,8 @@ def describe_event(event: dict) -> str | None:
         "owner_alert": f"Lead sent to the owner ({detail}).",
         "owner_notified": "Owner emailed through Gmail.",
         "notify_failed": "The owner email failed; the lead is still saved on the owner page.",
+        "webhook_sent": "Lead sent to the CRM webhook.",
+        "webhook_failed": "Sending the lead to the CRM webhook failed; it is still saved on the owner page.",
         "budget_reached": "The daily AI spending cap was reached, so the AI was skipped and a person will follow up.",
         "duplicate_ignored": "The same text arrived twice; the copy was ignored.",
         "person_requested": "Code noticed the customer asked for a person: after their next reply, a person takes over.",
@@ -85,8 +89,8 @@ def csv_safe(value) -> str:
 
 
 def create_app(cfg: dict, store: Store, llm, email: EmailNotifier, clock=None, preview_dir=PREVIEW_DIR,
-               port: int = PORT) -> Flask:
-    engine = Engine(cfg, store, llm, [email])
+               port: int = PORT, webhook: WebhookNotifier | None = None) -> Flask:
+    engine = Engine(cfg, store, llm, [email, webhook] if webhook else [email])
     provider = SimulatedProvider(engine, clock) if clock else SimulatedProvider(engine)
     app = Flask(__name__)
     app.config["TEMPLATES_AUTO_RELOAD"] = True  # page edits show on refresh, without restarting
@@ -157,9 +161,13 @@ def create_app(cfg: dict, store: Store, llm, email: EmailNotifier, clock=None, p
 
     @app.get("/")
     def demo():
+        webhook_on = bool(webhook and webhook.enabled())
+        # Only a test receiver on this PC gets a link; a real Zapier address works like a password, so it stays hidden
+        webhook_local = webhook.url if webhook_on and urlsplit(webhook.url).hostname in LOCAL_HOSTS else ""
         return render_template("demo.html", card_fields=CARD_FIELDS, sources=SOURCES,
                                office_open=office_open(cfg, provider.clock()),
-                               gmail_ready=email.gmail_ready(), send_email=email.send)
+                               gmail_ready=email.gmail_ready(), send_email=email.send, webhook_on=webhook_on,
+                               webhook_local=webhook_local, webhook_problem=webhook.problem if webhook else None)
 
     @app.post("/api/call")
     def api_call():
@@ -277,8 +285,14 @@ def main() -> None:
     cfg = load_config()
     # Real emails start switched off; the demo page has a switch to turn them on
     email = EmailNotifier(cfg, env, send=False)
-    app = create_app(cfg, Store(), ClaudeClient(cfg, env["ANTHROPIC_API_KEY"]), email)
+    store = Store()
+    webhook = WebhookNotifier(cfg, env, store)
+    app = create_app(cfg, store, ClaudeClient(cfg, env["ANTHROPIC_API_KEY"]), email, webhook=webhook)
     print(f"Demo running at http://{HOST}:{PORT}  (owner view: http://{HOST}:{PORT}/owner)")
+    if webhook.problem:
+        print(f"Webhook off: {webhook.problem}")
+    elif webhook.enabled():
+        print("Leads are also sent to the webhook in LEAD_WEBHOOK_URL.")
     print("Press Ctrl+C to stop.")
     os.environ.setdefault("FLASK_SKIP_DOTENV", "1")  # our own scripts/env.py reads .env
     # One request at a time keeps the shared database connection simple; fine for a one-person demo

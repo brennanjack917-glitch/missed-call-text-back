@@ -14,7 +14,7 @@ It should look polished, be easy for others to understand and be easy to demo. S
 - **Model:** Claude Haiku 5.5, effort low, about $5/month budget. Friendly and casual tone. Runs on the PC only (demo on port 5050).
 - **GitHub repo:** private until polished, then public. Treat it as public: never commit secrets. See `resources/going-public.md` before making it public.
 
-**Status (2026-10-27):** Phases 0 to 6 are done (setup, research, design, core engine, demo page and owner view, hardening, polish). Next: optional Phase 7 (Twilio, CRM webhooks, calendar, multiple businesses) and the going-public checklist.
+**Status (2026-10-28):** Phases 0 to 6 are done (setup, research, design, core engine, demo page and owner view, hardening, polish) and the repo is public. Phase 7 is in progress: the lead webhook is done (`scripts/webhook.py`, test receiver on port 5051); next is calendar booking with simple time slots in `config.toml`, then Twilio and multiple businesses. See `resources/launch-checklist.md`.
 
 # How the code works (keep these rules)
 - **The AI only writes replies.** Code sends safety messages, checks every reply (`scripts/guard.py`), decides hand-offs and enforces the spending cap (`scripts/engine.py`). When a prompt instruction doesn't stick in real tests, enforce it in code.
