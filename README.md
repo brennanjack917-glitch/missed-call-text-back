@@ -3,8 +3,6 @@
 
 
 
-Uploading demo-720p.mp4…
-
 # Missed-Call Text-Back
 
 [![Tests](https://github.com/brennanjack917-glitch/missed-call-text-back/actions/workflows/tests.yml/badge.svg)](https://github.com/brennanjack917-glitch/missed-call-text-back/actions/workflows/tests.yml)
@@ -35,7 +33,7 @@ Both pages have light and dark mode ([demo, dark](docs/screenshots/demo-dark.png
 
 **Demo (30 seconds):** a missed call, water pouring through a ceiling, and the lead landing on the owner view.
 
-https://github.com/user-attachments/assets/362fc7e4-e9d9-49d3-966c-d41cbec020ca
+https://github.com/user-attachments/assets/815d536a-8f61-4229-b9d9-c3a3f975d4c8
 
 ## How it works
 
